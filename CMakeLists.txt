@@ -15,6 +15,14 @@ add_library(glad STATIC src/glad.c)
 target_include_directories(glad PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_link_libraries(glad PUBLIC ${CMAKE_DL_LIBS})
 
+# Download GLM
+FetchContent_Declare(
+    glm
+    GIT_REPOSITORY https://github.com/g-truc/glm.git
+    GIT_TAG 0.9.9.8
+)
+FetchContent_MakeAvailable(glm)
+
 # Download and configure ImGui
 FetchContent_Declare(
     imgui
@@ -48,11 +56,17 @@ set(SOURCES
     src/main.cpp
     src/application.cpp
     src/renderer.cpp
+    src/shader.cpp
+    src/ui_controller.cpp
+    src/utils/logger.cpp
 )
 
 set(HEADERS
     src/application.h
     src/renderer.h
+    src/shader.h
+    src/ui_controller.h
+    src/utils/logger.h
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
@@ -67,6 +81,7 @@ target_link_libraries(${PROJECT_NAME}
     glfw
     glad
     imgui
+    glm::glm
     ${CMAKE_THREAD_LIBS_INIT}
 )
 

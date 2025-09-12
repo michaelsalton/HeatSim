@@ -1,7 +1,10 @@
 #include "application.h"
 #include "renderer.h"
+#include "ui_controller.h"
+#include "utils/logger.h"
 #include <iostream>
 #include <stdexcept>
+#include <cmath>
 #include <glad/glad.h>
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
@@ -13,7 +16,8 @@ Application::Application(const std::string& title, int width, int height)
     , m_width(width)
     , m_height(height)
     , m_running(false)
-    , m_lastFrameTime(0.0f) {
+    , m_lastFrameTime(0.0f)
+    , m_simulationTime(0.0f) {
     init();
 }
 
@@ -22,6 +26,11 @@ Application::~Application() {
 }
 
 void Application::init() {
+    // Initialize logger
+    Logger::getInstance().setLogLevel(LogLevel::DEBUG);
+    Logger::getInstance().enableFileLogging("heatsim.log");
+    LOG_INFO("Initializing Heat Sim application");
+    
     glfwSetErrorCallback(errorCallback);
     
     if (!glfwInit()) {
@@ -44,6 +53,7 @@ void Application::init() {
     
     glfwMakeContextCurrent(m_window);
     glfwSetFramebufferSizeCallback(m_window, framebufferSizeCallback);
+    glfwSetKeyCallback(m_window, keyCallback);
     glfwSetWindowUserPointer(m_window, this);
     
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
@@ -51,6 +61,7 @@ void Application::init() {
     }
     
     glViewport(0, 0, m_width, m_height);
+    glEnable(GL_DEPTH_TEST);
     
     glfwSwapInterval(1);
     
@@ -65,12 +76,21 @@ void Application::init() {
     ImGui_ImplOpenGL3_Init("#version 430");
     
     m_renderer = std::make_unique<Renderer>();
+    m_renderer->initialize();
     
-    std::cout << "OpenGL Version: " << glGetString(GL_VERSION) << std::endl;
-    std::cout << "OpenGL Renderer: " << glGetString(GL_RENDERER) << std::endl;
+    m_uiController = std::make_unique<UIController>();
+    
+    initializeSimulation();
+    
+    LOG_INFO("OpenGL Version: " + std::string((const char*)glGetString(GL_VERSION)));
+    LOG_INFO("OpenGL Renderer: " + std::string((const char*)glGetString(GL_RENDERER)));
+    LOG_INFO("Application initialized successfully");
 }
 
 void Application::cleanup() {
+    LOG_INFO("Cleaning up application");
+    
+    m_uiController.reset();
     m_renderer.reset();
     
     ImGui_ImplOpenGL3_Shutdown();
@@ -109,7 +129,24 @@ void Application::processInput() {
 }
 
 void Application::update(float deltaTime) {
-    (void)deltaTime;
+    // Update simulation
+    updateSimulation(deltaTime);
+    
+    // Check for UI parameter changes
+    if (m_uiController && m_uiController->hasParamsChanged()) {
+        const auto& params = m_uiController->getParams();
+        
+        // Update renderer settings
+        m_renderer->setColorScheme(params.colorScheme);
+        m_renderer->setTemperatureRange(params.minTemp, params.maxTemp);
+        
+        // Resize temperature array if needed
+        if (params.rodPoints != m_temperatures.size()) {
+            initializeSimulation();
+        }
+        
+        m_uiController->resetParamsChanged();
+    }
 }
 
 void Application::render() {
@@ -124,13 +161,64 @@ void Application::render() {
         m_renderer->render();
     }
     
-    ImGui::Begin("Heat Simulation Controls");
-    ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 
-                1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-    ImGui::End();
+    if (m_uiController) {
+        m_uiController->render();
+    }
     
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+}
+
+void Application::initializeSimulation() {
+    const auto& params = m_uiController->getParams();
+    
+    // Initialize temperature array
+    m_temperatures.resize(params.rodPoints);
+    for (int i = 0; i < params.rodPoints; ++i) {
+        // Set initial temperature distribution
+        if (i == 0) {
+            m_temperatures[i] = params.heatSourceTemp;
+        } else {
+            m_temperatures[i] = params.ambientTemp;
+        }
+    }
+    
+    // Update renderer with initial data
+    m_renderer->setRodData(m_temperatures);
+    m_simulationTime = 0.0f;
+    
+    LOG_INFO("Simulation initialized with " + std::to_string(params.rodPoints) + " points");
+}
+
+void Application::updateSimulation(float deltaTime) {
+    const auto& params = m_uiController->getParams();
+    
+    if (!params.isPaused) {
+        // Simple heat diffusion update (placeholder for now)
+        // This will be replaced with proper physics in Phase 2
+        float alpha = params.thermalConductivity / (params.density * params.specificHeat);
+        float dx = params.rodLength / params.rodPoints;
+        float dt = params.autoTimeStep ? 
+                   std::min(0.5f * dx * dx / alpha, 0.01f) : 
+                   params.timeStep;
+        
+        // Update temperature with simple diffusion
+        std::vector<float> newTemps = m_temperatures;
+        for (int i = 1; i < params.rodPoints - 1; ++i) {
+            float laplacian = (m_temperatures[i+1] - 2*m_temperatures[i] + m_temperatures[i-1]) / (dx * dx);
+            newTemps[i] = m_temperatures[i] + alpha * dt * laplacian;
+        }
+        
+        // Boundary conditions
+        newTemps[0] = params.heatSourceTemp;
+        newTemps[params.rodPoints - 1] = params.ambientTemp;
+        
+        m_temperatures = newTemps;
+        m_simulationTime += dt;
+        
+        // Update renderer
+        m_renderer->setRodData(m_temperatures);
+    }
 }
 
 void Application::framebufferSizeCallback(GLFWwindow* window, int width, int height) {
@@ -139,9 +227,31 @@ void Application::framebufferSizeCallback(GLFWwindow* window, int width, int hei
         app->m_width = width;
         app->m_height = height;
         glViewport(0, 0, width, height);
+        if (app->m_renderer) {
+            app->m_renderer->resize(width, height);
+        }
     }
 }
 
 void Application::errorCallback(int error, const char* description) {
-    std::cerr << "GLFW Error (" << error << "): " << description << std::endl;
+    LOG_ERROR("GLFW Error (" + std::to_string(error) + "): " + std::string(description));
+}
+
+void Application::keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    auto* app = static_cast<Application*>(glfwGetWindowUserPointer(window));
+    if (!app || action != GLFW_PRESS) return;
+    
+    switch (key) {
+        case GLFW_KEY_SPACE:
+            if (app->m_uiController) {
+                app->m_uiController->togglePause();
+            }
+            break;
+        case GLFW_KEY_R:
+            if (app->m_uiController) {
+                app->m_uiController->reset();
+                app->initializeSimulation();
+            }
+            break;
+    }
 }
