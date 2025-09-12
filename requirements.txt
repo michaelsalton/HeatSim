@@ -1,0 +1,97 @@
+# HeatSim System Requirements
+
+## Operating System
+- Linux (Ubuntu 20.04+, Fedora 35+, or similar)
+- Windows 10/11 with WSL2 or native
+- macOS 11+ (limited CUDA support)
+
+## Hardware Requirements
+
+### Minimum
+- CPU: Dual-core processor (2.0 GHz+)
+- RAM: 4 GB
+- GPU: OpenGL 4.3 compatible graphics card
+- Storage: 500 MB available space
+
+### Recommended
+- CPU: Quad-core processor (3.0 GHz+)
+- RAM: 8 GB
+- GPU: NVIDIA GPU with Compute Capability 3.5+ (for CUDA acceleration)
+- Storage: 1 GB available space
+
+### CUDA Requirements (Optional)
+- NVIDIA GPU with Compute Capability 3.5 or higher
+- CUDA Toolkit 11.0 or higher
+- NVIDIA Driver 450.51.05 or higher (Linux) / 451.22 or higher (Windows)
+
+## Software Dependencies
+
+### Build Tools
+- CMake 3.18 or higher
+- C++17 compatible compiler:
+  - GCC 8.0+
+  - Clang 9.0+
+  - MSVC 2019+
+- Make or Ninja build system
+
+### Graphics Libraries
+- OpenGL 4.3+
+- GLFW 3.3+
+- GLAD (OpenGL loader)
+
+### Development Libraries (Linux)
+```bash
+# Ubuntu/Debian
+libglfw3-dev
+libgl1-mesa-dev
+libglu1-mesa-dev
+libxrandr-dev
+libxinerama-dev
+libxcursor-dev
+libxi-dev
+
+# Fedora/RHEL
+glfw-devel
+mesa-libGL-devel
+mesa-libGLU-devel
+libXrandr-devel
+libXinerama-devel
+libXcursor-devel
+libXi-devel
+```
+
+### Optional Dependencies
+- CUDA Toolkit 11.0+ (for GPU acceleration)
+- Git (for fetching dependencies)
+- pkg-config (for library detection)
+
+## Python Requirements (for build scripts)
+```
+# No Python dependencies required for core application
+# Optional for analysis/visualization scripts:
+numpy>=1.19.0
+matplotlib>=3.3.0
+pandas>=1.2.0
+```
+
+## Verification
+
+To verify your system meets the requirements, run:
+```bash
+make check-deps
+```
+
+## Installation Commands
+
+### Ubuntu/Debian
+```bash
+make install-deps-ubuntu
+```
+
+### Fedora/RHEL
+```bash
+make install-deps-fedora
+```
+
+### Manual CUDA Installation
+Visit: https://developer.nvidia.com/cuda-downloads
