@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.18)
-project(HeatSim LANGUAGES CXX)
+project(HeatSim LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -10,19 +10,10 @@ find_package(Threads REQUIRED)
 
 include(FetchContent)
 
-# Download and configure GLAD
-FetchContent_Declare(
-    glad
-    GIT_REPOSITORY https://github.com/Dav1dde/glad.git
-    GIT_TAG v0.1.36
-)
-
-FetchContent_GetProperties(glad)
-if(NOT glad_POPULATED)
-    FetchContent_Populate(glad)
-    add_library(glad STATIC ${glad_SOURCE_DIR}/src/glad.c)
-    target_include_directories(glad PUBLIC ${glad_SOURCE_DIR}/include)
-endif()
+# Add GLAD library
+add_library(glad STATIC src/glad.c)
+target_include_directories(glad PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_libraries(glad PUBLIC ${CMAKE_DL_LIBS})
 
 # Download and configure ImGui
 FetchContent_Declare(
@@ -55,13 +46,13 @@ endif()
 
 set(SOURCES
     src/main.cpp
-    src/Application.cpp
-    src/Renderer.cpp
+    src/application.cpp
+    src/renderer.cpp
 )
 
 set(HEADERS
-    src/Application.h
-    src/Renderer.h
+    src/application.h
+    src/renderer.h
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})

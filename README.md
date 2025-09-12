@@ -1,6 +1,6 @@
 # Heat Sim
 
-A real-time 1D heat transfer visualization built with C++, CUDA, and ImGui.
+A real-time 1D heat transfer visualization built with C++, CUDA, and OpenGL.
 
 ## Features
 
