@@ -1,5 +1,5 @@
-#include "Application.h"
-#include "Renderer.h"
+#include "application.h"
+#include "renderer.h"
 #include <iostream>
 #include <stdexcept>
 #include <glad/glad.h>
