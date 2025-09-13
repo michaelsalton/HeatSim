@@ -10,10 +10,7 @@ find_package(Threads REQUIRED)
 
 include(FetchContent)
 
-# Add GLAD library
-add_library(glad STATIC src/glad.c)
-target_include_directories(glad PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_link_libraries(glad PUBLIC ${CMAKE_DL_LIBS})
+# GLAD is now included in the main executable sources
 
 # Download GLM
 FetchContent_Declare(
@@ -54,18 +51,19 @@ endif()
 
 set(SOURCES
     src/main.cpp
-    src/application.cpp
-    src/renderer.cpp
-    src/shader.cpp
-    src/ui_controller.cpp
+    src/core/application.cpp
+    src/graphics/renderer.cpp
+    src/graphics/shader.cpp
+    src/ui/ui_controller.cpp
     src/utils/logger.cpp
+    src/io/glad.c
 )
 
 set(HEADERS
-    src/application.h
-    src/renderer.h
-    src/shader.h
-    src/ui_controller.h
+    src/core/application.h
+    src/graphics/renderer.h
+    src/graphics/shader.h
+    src/ui/ui_controller.h
     src/utils/logger.h
 )
 
@@ -79,9 +77,9 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 target_link_libraries(${PROJECT_NAME}
     OpenGL::GL
     glfw
-    glad
     imgui
     glm::glm
+    ${CMAKE_DL_LIBS}
     ${CMAKE_THREAD_LIBS_INIT}
 )
 

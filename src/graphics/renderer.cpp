@@ -1,6 +1,6 @@
 #include "renderer.h"
 #include "shader.h"
-#include "utils/logger.h"
+#include "../utils/logger.h"
 #include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
 #include <fstream>

@@ -1,7 +1,7 @@
 #include "application.h"
-#include "renderer.h"
-#include "ui_controller.h"
-#include "utils/logger.h"
+#include "../graphics/renderer.h"
+#include "../ui/ui_controller.h"
+#include "../utils/logger.h"
 #include <iostream>
 #include <stdexcept>
 #include <cmath>
