@@ -266,9 +266,16 @@ const std::vector<float>& CUDASimulationEngine::getTemperatures() {
 }
 
 float CUDASimulationEngine::calculateStableTimeStep() const {
+    // Calculate thermal diffusivity: α = k/(ρc)
     float alpha = m_thermalConductivity / (m_density * m_specificHeat);
+    
+    // Grid spacing
     float dx = m_rodLength / (m_rodPoints - 1);
-    return 0.4f * (dx * dx) / alpha;  // Slightly conservative for stability
+    
+    // CFL stability condition for explicit finite difference:
+    // Δt_max = 0.5 * Δx² / α
+    // We use 0.4 for safety margin (80% of theoretical maximum)
+    return 0.4f * (dx * dx) / alpha;
 }
 
 bool CUDASimulationEngine::isStable() const {

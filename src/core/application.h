@@ -29,6 +29,11 @@ private:
     static void framebufferSizeCallback(GLFWwindow* window, int width, int height);
     static void errorCallback(int error, const char* description);
     static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
+    static void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
+    static void cursorPosCallback(GLFWwindow* window, double xpos, double ypos);
+    static void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
+    
+    void toggleFullscreen();
     
     GLFWwindow* m_window;
     std::unique_ptr<Renderer> m_renderer;
@@ -46,4 +51,15 @@ private:
     // Simulation data (fallback for non-CUDA)
     std::vector<float> m_temperatures;
     float m_simulationTime;
+    
+    // Input handling
+    bool m_mousePressed = false;
+    double m_lastMouseX = 0.0;
+    double m_lastMouseY = 0.0;
+    float m_zoomLevel = 1.0f;
+    bool m_fullscreen = false;
+    int m_windowedX = 0;
+    int m_windowedY = 0;
+    int m_windowedWidth = 1920;
+    int m_windowedHeight = 1080;
 };

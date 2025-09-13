@@ -21,6 +21,11 @@ public:
     void setColorScheme(int scheme) { m_colorScheme = scheme; }
     void setTemperatureRange(float min, float max) { m_minTemp = min; m_maxTemp = max; }
     
+    // Camera controls
+    void setZoom(float zoom);
+    void pan(float deltaX, float deltaY);
+    void resetCamera();
+    
 private:
     void initializeRodGeometry();
     void updateRodGeometry();
@@ -48,6 +53,10 @@ private:
     // Matrices
     glm::mat4 m_projection;
     glm::mat4 m_view;
+    
+    // Camera
+    float m_zoom = 1.0f;
+    glm::vec2 m_pan = glm::vec2(0.0f, 0.0f);
     
     int m_width;
     int m_height;

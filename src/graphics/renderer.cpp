@@ -208,9 +208,11 @@ void Renderer::resize(int width, int height) {
     m_width = width;
     m_height = height;
     
-    // Update projection matrix
+    // Update projection matrix with zoom
     float aspect = static_cast<float>(width) / static_cast<float>(height);
-    m_projection = glm::ortho(-aspect, aspect, -1.0f, 1.0f, -1.0f, 1.0f);
+    m_projection = glm::ortho(-aspect * m_zoom, aspect * m_zoom, 
+                             -1.0f * m_zoom, 1.0f * m_zoom, 
+                             -1.0f, 1.0f);
 }
 
 void Renderer::setRodData(const std::vector<float>& temperatures) {
@@ -223,6 +225,26 @@ void Renderer::setRodData(const std::vector<float>& temperatures) {
     } else {
         updateRodGeometry();
     }
+}
+
+void Renderer::setZoom(float zoom) {
+    m_zoom = zoom;
+    resize(m_width, m_height);  // Update projection
+}
+
+void Renderer::pan(float deltaX, float deltaY) {
+    m_pan.x += deltaX * m_zoom;
+    m_pan.y -= deltaY * m_zoom;  // Invert Y for screen coordinates
+    
+    // Update view matrix
+    m_view = glm::translate(glm::mat4(1.0f), glm::vec3(m_pan, 0.0f));
+}
+
+void Renderer::resetCamera() {
+    m_zoom = 1.0f;
+    m_pan = glm::vec2(0.0f, 0.0f);
+    m_view = glm::mat4(1.0f);
+    resize(m_width, m_height);
 }
 
 void Renderer::cleanup() {

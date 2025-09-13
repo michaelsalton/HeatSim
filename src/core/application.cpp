@@ -7,6 +7,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <cmath>
+#include <algorithm>
 #include <glad/glad.h>
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
@@ -57,6 +58,9 @@ void Application::init() {
     glfwMakeContextCurrent(m_window);
     glfwSetFramebufferSizeCallback(m_window, framebufferSizeCallback);
     glfwSetKeyCallback(m_window, keyCallback);
+    glfwSetMouseButtonCallback(m_window, mouseButtonCallback);
+    glfwSetCursorPosCallback(m_window, cursorPosCallback);
+    glfwSetScrollCallback(m_window, scrollCallback);
     glfwSetWindowUserPointer(m_window, this);
     
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
@@ -262,6 +266,28 @@ void Application::updateSimulation(float deltaTime) {
     }
 }
 
+void Application::toggleFullscreen() {
+    if (!m_fullscreen) {
+        // Get the primary monitor and its video mode
+        GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+        const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+        
+        // Store current window position and size
+        glfwGetWindowPos(m_window, &m_windowedX, &m_windowedY);
+        glfwGetWindowSize(m_window, &m_windowedWidth, &m_windowedHeight);
+        
+        // Set fullscreen
+        glfwSetWindowMonitor(m_window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
+        m_fullscreen = true;
+        LOG_INFO("Entered fullscreen mode");
+    } else {
+        // Restore windowed mode
+        glfwSetWindowMonitor(m_window, nullptr, m_windowedX, m_windowedY, m_windowedWidth, m_windowedHeight, 0);
+        m_fullscreen = false;
+        LOG_INFO("Exited fullscreen mode");
+    }
+}
+
 void Application::framebufferSizeCallback(GLFWwindow* window, int width, int height) {
     auto* app = static_cast<Application*>(glfwGetWindowUserPointer(window));
     if (app) {
@@ -282,17 +308,94 @@ void Application::keyCallback(GLFWwindow* window, int key, int scancode, int act
     auto* app = static_cast<Application*>(glfwGetWindowUserPointer(window));
     if (!app || action != GLFW_PRESS) return;
     
+    // Let ImGui handle input if it wants it
+    ImGuiIO& io = ImGui::GetIO();
+    if (io.WantCaptureKeyboard) return;
+    
     switch (key) {
         case GLFW_KEY_SPACE:
             if (app->m_uiController) {
                 app->m_uiController->togglePause();
+                LOG_INFO("Simulation " + std::string(app->m_uiController->getParams().isPaused ? "paused" : "resumed"));
             }
             break;
         case GLFW_KEY_R:
             if (app->m_uiController) {
                 app->m_uiController->reset();
                 app->initializeSimulation();
+                LOG_INFO("Simulation reset");
             }
             break;
+        case GLFW_KEY_F1:
+            LOG_INFO("F1: Help - Space: Pause/Resume, R: Reset, +/-: Zoom, F11: Fullscreen");
+            break;
+        case GLFW_KEY_F11:
+            app->toggleFullscreen();
+            break;
+        case GLFW_KEY_EQUAL:  // Plus key
+            if (app->m_renderer) {
+                app->m_zoomLevel *= 1.1f;
+                app->m_renderer->setZoom(app->m_zoomLevel);
+            }
+            break;
+        case GLFW_KEY_MINUS:
+            if (app->m_renderer) {
+                app->m_zoomLevel /= 1.1f;
+                app->m_renderer->setZoom(app->m_zoomLevel);
+            }
+            break;
+    }
+}
+
+void Application::mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
+    auto* app = static_cast<Application*>(glfwGetWindowUserPointer(window));
+    if (!app) return;
+    
+    // Let ImGui handle input if it wants it
+    ImGuiIO& io = ImGui::GetIO();
+    if (io.WantCaptureMouse) return;
+    
+    if (button == GLFW_MOUSE_BUTTON_LEFT) {
+        if (action == GLFW_PRESS) {
+            app->m_mousePressed = true;
+            glfwGetCursorPos(window, &app->m_lastMouseX, &app->m_lastMouseY);
+        } else if (action == GLFW_RELEASE) {
+            app->m_mousePressed = false;
+        }
+    }
+}
+
+void Application::cursorPosCallback(GLFWwindow* window, double xpos, double ypos) {
+    auto* app = static_cast<Application*>(glfwGetWindowUserPointer(window));
+    if (!app) return;
+    
+    // Let ImGui handle input if it wants it
+    ImGuiIO& io = ImGui::GetIO();
+    if (io.WantCaptureMouse) return;
+    
+    if (app->m_mousePressed && app->m_renderer) {
+        float deltaX = static_cast<float>(xpos - app->m_lastMouseX);
+        float deltaY = static_cast<float>(ypos - app->m_lastMouseY);
+        
+        // Pan the view
+        app->m_renderer->pan(deltaX * 0.01f, deltaY * 0.01f);
+        
+        app->m_lastMouseX = xpos;
+        app->m_lastMouseY = ypos;
+    }
+}
+
+void Application::scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
+    auto* app = static_cast<Application*>(glfwGetWindowUserPointer(window));
+    if (!app) return;
+    
+    // Let ImGui handle input if it wants it
+    ImGuiIO& io = ImGui::GetIO();
+    if (io.WantCaptureMouse) return;
+    
+    if (app->m_renderer) {
+        app->m_zoomLevel *= (1.0f + static_cast<float>(yoffset) * 0.1f);
+        app->m_zoomLevel = std::max(0.1f, std::min(10.0f, app->m_zoomLevel));
+        app->m_renderer->setZoom(app->m_zoomLevel);
     }
 }
