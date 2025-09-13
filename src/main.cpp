@@ -4,7 +4,7 @@
 
 int main() {
     try {
-        auto app = std::make_unique<Application>("Heat Sim", 1280, 720);
+        auto app = std::make_unique<Application>("Heat Sim", 1920, 1080);
         app->run();
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;

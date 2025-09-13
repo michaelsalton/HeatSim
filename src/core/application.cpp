@@ -1,6 +1,8 @@
 #include "application.h"
 #include "../graphics/renderer.h"
 #include "../ui/ui_controller.h"
+#include "../simulation/cuda_simulation_engine.h"
+#include "../cuda/cuda_manager.h"
 #include "../utils/logger.h"
 #include <iostream>
 #include <stdexcept>
@@ -17,7 +19,8 @@ Application::Application(const std::string& title, int width, int height)
     , m_height(height)
     , m_running(false)
     , m_lastFrameTime(0.0f)
-    , m_simulationTime(0.0f) {
+    , m_simulationTime(0.0f)
+    , m_useCUDA(false) {
     init();
 }
 
@@ -80,6 +83,8 @@ void Application::init() {
     
     m_uiController = std::make_unique<UIController>();
     
+    // Initialize CUDA simulation engine
+    initializeCUDA();
     initializeSimulation();
     
     LOG_INFO("OpenGL Version: " + std::string((const char*)glGetString(GL_VERSION)));
@@ -169,17 +174,45 @@ void Application::render() {
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
+void Application::initializeCUDA() {
+    // Try to initialize CUDA
+    if (CUDAManager::getInstance().initialize()) {
+        m_simulation = std::make_unique<CUDASimulationEngine>();
+        m_useCUDA = true;
+        LOG_INFO("CUDA initialized successfully");
+        LOG_INFO("Using GPU: " + CUDAManager::getInstance().getDeviceName());
+    } else {
+        m_useCUDA = false;
+        LOG_WARNING("CUDA initialization failed, using CPU simulation");
+    }
+}
+
 void Application::initializeSimulation() {
     const auto& params = m_uiController->getParams();
     
-    // Initialize temperature array
-    m_temperatures.resize(params.rodPoints);
-    for (int i = 0; i < params.rodPoints; ++i) {
-        // Set initial temperature distribution
-        if (i == 0) {
-            m_temperatures[i] = params.heatSourceTemp;
-        } else {
-            m_temperatures[i] = params.ambientTemp;
+    if (m_useCUDA && m_simulation) {
+        // Initialize CUDA simulation
+        m_simulation->initialize(params.rodPoints, params.rodLength);
+        m_simulation->setMaterialProperties(params.thermalConductivity, 
+                                           params.density, 
+                                           params.specificHeat);
+        m_simulation->setTemperatureRange(params.minTemp, params.maxTemp);
+        m_simulation->setColorScheme(params.colorScheme);
+        m_simulation->setHeatSourceTemp(params.heatSourceTemp);
+        m_simulation->setAmbientTemp(params.ambientTemp);
+        m_simulation->reset();
+        
+        // Get initial temperatures for rendering
+        m_temperatures = m_simulation->getTemperatures();
+    } else {
+        // CPU fallback
+        m_temperatures.resize(params.rodPoints);
+        for (int i = 0; i < params.rodPoints; ++i) {
+            if (i == 0) {
+                m_temperatures[i] = params.heatSourceTemp;
+            } else {
+                m_temperatures[i] = params.ambientTemp;
+            }
         }
     }
     
@@ -187,37 +220,45 @@ void Application::initializeSimulation() {
     m_renderer->setRodData(m_temperatures);
     m_simulationTime = 0.0f;
     
-    LOG_INFO("Simulation initialized with " + std::to_string(params.rodPoints) + " points");
+    LOG_INFO("Simulation initialized with " + std::to_string(params.rodPoints) + " points " +
+             (m_useCUDA ? "(CUDA)" : "(CPU)"));
 }
 
 void Application::updateSimulation(float deltaTime) {
     const auto& params = m_uiController->getParams();
     
     if (!params.isPaused) {
-        // Simple heat diffusion update (placeholder for now)
-        // This will be replaced with proper physics in Phase 2
-        float alpha = params.thermalConductivity / (params.density * params.specificHeat);
-        float dx = params.rodLength / params.rodPoints;
-        float dt = params.autoTimeStep ? 
-                   std::min(0.5f * dx * dx / alpha, 0.01f) : 
-                   params.timeStep;
-        
-        // Update temperature with simple diffusion
-        std::vector<float> newTemps = m_temperatures;
-        for (int i = 1; i < params.rodPoints - 1; ++i) {
-            float laplacian = (m_temperatures[i+1] - 2*m_temperatures[i] + m_temperatures[i-1]) / (dx * dx);
-            newTemps[i] = m_temperatures[i] + alpha * dt * laplacian;
+        if (m_useCUDA && m_simulation) {
+            // Update CUDA simulation
+            m_simulation->setPaused(false);
+            m_simulation->update(deltaTime);
+            m_temperatures = m_simulation->getTemperatures();
+            m_simulationTime = m_simulation->getSimulationTime();
+        } else {
+            // CPU fallback simulation
+            float alpha = params.thermalConductivity / (params.density * params.specificHeat);
+            float dx = params.rodLength / params.rodPoints;
+            float dt = params.autoTimeStep ? 
+                       std::min(0.5f * dx * dx / alpha, 0.01f) : 
+                       params.timeStep;
+            
+            std::vector<float> newTemps = m_temperatures;
+            for (int i = 1; i < params.rodPoints - 1; ++i) {
+                float laplacian = (m_temperatures[i+1] - 2*m_temperatures[i] + m_temperatures[i-1]) / (dx * dx);
+                newTemps[i] = m_temperatures[i] + alpha * dt * laplacian;
+            }
+            
+            newTemps[0] = params.heatSourceTemp;
+            newTemps[params.rodPoints - 1] = params.ambientTemp;
+            
+            m_temperatures = newTemps;
+            m_simulationTime += dt;
         }
-        
-        // Boundary conditions
-        newTemps[0] = params.heatSourceTemp;
-        newTemps[params.rodPoints - 1] = params.ambientTemp;
-        
-        m_temperatures = newTemps;
-        m_simulationTime += dt;
         
         // Update renderer
         m_renderer->setRodData(m_temperatures);
+    } else if (m_useCUDA && m_simulation) {
+        m_simulation->setPaused(true);
     }
 }
 

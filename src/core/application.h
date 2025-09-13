@@ -7,6 +7,7 @@
 
 class Renderer;
 class UIController;
+class CUDASimulationEngine;
 
 class Application {
 public:
@@ -21,6 +22,7 @@ private:
     void processInput();
     void update(float deltaTime);
     void render();
+    void initializeCUDA();
     void initializeSimulation();
     void updateSimulation(float deltaTime);
     
@@ -31,15 +33,17 @@ private:
     GLFWwindow* m_window;
     std::unique_ptr<Renderer> m_renderer;
     std::unique_ptr<UIController> m_uiController;
+    std::unique_ptr<CUDASimulationEngine> m_simulation;
     
     std::string m_title;
     int m_width;
     int m_height;
     bool m_running;
+    bool m_useCUDA;
     
     float m_lastFrameTime;
     
-    // Simulation data
+    // Simulation data (fallback for non-CUDA)
     std::vector<float> m_temperatures;
     float m_simulationTime;
 };

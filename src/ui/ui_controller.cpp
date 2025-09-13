@@ -1,7 +1,9 @@
 #include "ui_controller.h"
 #include "../utils/logger.h"
+#include "../cuda/cuda_manager.h"
 #include <algorithm>
 #include <cstring>
+#include <imgui.h>
 
 UIController::UIController() 
     : m_paramsChanged(false)
@@ -172,6 +174,27 @@ void UIController::renderPerformancePanel() {
     ImGui::Text("Rod Points: %d", m_params.rodPoints);
     ImGui::Text("Time Step: %.5f s", m_params.timeStep);
     ImGui::Text("Status: %s", m_params.isPaused ? "Paused" : "Running");
+    
+    // CUDA Performance
+    ImGui::Separator();
+    ImGui::Text("CUDA Status:");
+    if (CUDAManager::getInstance().isInitialized()) {
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "CUDA Active");
+        ImGui::Text("Device: %s", CUDAManager::getInstance().getDeviceName().c_str());
+        
+        size_t freeMemory = CUDAManager::getInstance().getFreeMemory();
+        size_t totalMemory = CUDAManager::getInstance().getTotalMemory();
+        float memUsagePercent = 100.0f * (1.0f - (float)freeMemory / (float)totalMemory);
+        
+        ImGui::Text("Memory: %.1f%% used", memUsagePercent);
+        ImGui::ProgressBar(memUsagePercent / 100.0f, ImVec2(-1, 0));
+        ImGui::Text("Free: %.2f GB / Total: %.2f GB", 
+                    freeMemory / (1024.0f * 1024.0f * 1024.0f),
+                    totalMemory / (1024.0f * 1024.0f * 1024.0f));
+    } else {
+        ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "CPU Mode");
+        ImGui::Text("CUDA not available");
+    }
     
     ImGui::End();
 }

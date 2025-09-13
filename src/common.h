@@ -30,8 +30,8 @@
 // Project constants
 namespace HeatSim {
     // Window defaults
-    constexpr int DEFAULT_WIDTH = 1280;
-    constexpr int DEFAULT_HEIGHT = 720;
+    constexpr int DEFAULT_WIDTH = 1920;
+    constexpr int DEFAULT_HEIGHT = 1080;
     
     // Simulation defaults
     constexpr int DEFAULT_ROD_POINTS = 100;
