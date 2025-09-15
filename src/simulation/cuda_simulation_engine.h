@@ -42,6 +42,8 @@ public:
     // Getters
     const std::vector<float>& getTemperatures();
     float getSimulationTime() const { return m_simulationTime; }
+    float getRodLength() const { return m_rodLength; }
+    int getRodPoints() const { return m_rodPoints; }
     bool isStable() const;
     bool isUsingCUDA() const { return m_useCUDA; }
     

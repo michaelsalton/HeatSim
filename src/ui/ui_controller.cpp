@@ -69,15 +69,33 @@ void UIController::renderControlPanel() {
     // Simulation controls
     ImGui::SeparatorText("Simulation Control");
     
-    if (ImGui::Button(m_params.isPaused ? "Play" : "Pause", ImVec2(100, 0))) {
-        togglePause();
-        LOG_INFO(m_params.isPaused ? "Simulation paused" : "Simulation resumed");
+    // Play/Pause button with icon-like appearance
+    if (m_params.isPaused) {
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.7f, 0.2f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.8f, 0.3f, 1.0f));
+        if (ImGui::Button("▶ Play", ImVec2(100, 30))) {
+            togglePause();
+            LOG_INFO("Simulation resumed");
+        }
+        ImGui::PopStyleColor(2);
+    } else {
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.5f, 0.2f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.6f, 0.3f, 1.0f));
+        if (ImGui::Button("⏸ Pause", ImVec2(100, 30))) {
+            togglePause();
+            LOG_INFO("Simulation paused");
+        }
+        ImGui::PopStyleColor(2);
     }
+    
     ImGui::SameLine();
-    if (ImGui::Button("Reset", ImVec2(100, 0))) {
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.2f, 0.2f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.3f, 0.3f, 1.0f));
+    if (ImGui::Button("↻ Reset", ImVec2(100, 30))) {
         reset();
         LOG_INFO("Simulation reset");
     }
+    ImGui::PopStyleColor(2);
     
     // Temperature controls
     ImGui::SeparatorText("Temperature Settings");
@@ -273,5 +291,6 @@ void UIController::updatePerformanceMetrics() {
 void UIController::reset() {
     // Reset simulation-specific parameters
     m_params.isPaused = true;
+    m_params.resetRequested = true;
     // Temperature distribution will be reset by the simulation engine
 }

@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include <cmath>
 #include <algorithm>
+#include <cstdlib>
 #include <glad/glad.h>
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
@@ -145,15 +146,48 @@ void Application::update(float deltaTime) {
     if (m_uiController && m_uiController->hasParamsChanged()) {
         const auto& params = m_uiController->getParams();
         
+        // Check if reset was triggered
+        static bool wasReset = false;
+        if (params.resetRequested) {
+            initializeSimulation();
+            m_uiController->clearResetFlag();
+            wasReset = true;
+        }
+        
         // Update renderer settings
         m_renderer->setColorScheme(params.colorScheme);
         m_renderer->setTemperatureRange(params.minTemp, params.maxTemp);
         
-        // Resize temperature array if needed
-        if (params.rodPoints != m_temperatures.size()) {
-            initializeSimulation();
+        // Update simulation parameters
+        if (m_useCUDA && m_simulation) {
+            // Update temperatures
+            m_simulation->setHeatSourceTemp(params.heatSourceTemp);
+            m_simulation->setAmbientTemp(params.ambientTemp);
+            
+            // Update material properties
+            m_simulation->setMaterialProperties(params.thermalConductivity,
+                                               params.density,
+                                               params.specificHeat);
+            
+            // Update time settings
+            m_simulation->setAutoTimeStep(params.autoTimeStep);
+            if (!params.autoTimeStep) {
+                m_simulation->setTimeStep(params.timeStep);
+            }
+            
+            // Check if we need to reinitialize (rod size or length changed)
+            if (!wasReset && (params.rodPoints != m_temperatures.size() || 
+                std::abs(params.rodLength - m_simulation->getRodLength()) > 0.001f)) {
+                initializeSimulation();
+            }
+        } else {
+            // For CPU fallback, just check if we need to reinitialize
+            if (!wasReset && params.rodPoints != m_temperatures.size()) {
+                initializeSimulation();
+            }
         }
         
+        wasReset = false;
         m_uiController->resetParamsChanged();
     }
 }
@@ -252,6 +286,7 @@ void Application::updateSimulation(float deltaTime) {
                 newTemps[i] = m_temperatures[i] + alpha * dt * laplacian;
             }
             
+            // Apply current boundary conditions from UI
             newTemps[0] = params.heatSourceTemp;
             newTemps[params.rodPoints - 1] = params.ambientTemp;
             

@@ -25,6 +25,7 @@ struct SimulationParams {
     float timeStep = 0.001f;
     bool isPaused = true;
     bool autoTimeStep = true;
+    bool resetRequested = false;
     
     // Visual settings
     int colorScheme = 0;
@@ -47,6 +48,7 @@ public:
     // Control
     void togglePause() { m_params.isPaused = !m_params.isPaused; }
     void reset();
+    void clearResetFlag() { m_params.resetRequested = false; }
     
 private:
     void renderControlPanel();
