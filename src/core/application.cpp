@@ -157,6 +157,8 @@ void Application::update(float deltaTime) {
         // Update renderer settings
         m_renderer->setColorScheme(params.colorScheme);
         m_renderer->setTemperatureRange(params.minTemp, params.maxTemp);
+        m_renderer->setShowTemperatureValues(params.showTemperatureValues);
+        m_renderer->setTemperatureDisplayCount(params.temperatureDisplayCount);
         
         // Update simulation parameters
         if (m_useCUDA && m_simulation) {

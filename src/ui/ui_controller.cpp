@@ -243,6 +243,19 @@ void UIController::renderVisualizationSettings() {
         
         ImGui::Checkbox("Show Grid", &m_params.showGrid);
         ImGui::Checkbox("Show Legend", &m_params.showLegend);
+        
+        ImGui::Separator();
+        ImGui::Checkbox("Show Temperature Values", &m_params.showTemperatureValues);
+        if (m_params.showTemperatureValues) {
+            ImGui::SliderInt("Display Points", &m_params.temperatureDisplayCount, 2, 10);
+            ImGui::SameLine();
+            ImGui::TextDisabled("(?)");
+            if (ImGui::IsItemHovered()) {
+                ImGui::BeginTooltip();
+                ImGui::Text("Number of temperature values to display along the rod");
+                ImGui::EndTooltip();
+            }
+        }
     }
 }
 

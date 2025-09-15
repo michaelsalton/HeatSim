@@ -31,6 +31,8 @@ struct SimulationParams {
     int colorScheme = 0;
     bool showGrid = true;
     bool showLegend = true;
+    bool showTemperatureValues = true;
+    int temperatureDisplayCount = 5;
 };
 
 class UIController {

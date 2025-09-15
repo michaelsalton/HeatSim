@@ -20,15 +20,21 @@ public:
     // Visual settings
     void setColorScheme(int scheme) { m_colorScheme = scheme; }
     void setTemperatureRange(float min, float max) { m_minTemp = min; m_maxTemp = max; }
+    void setShowTemperatureValues(bool show) { m_showTemperatureValues = show; }
+    void setTemperatureDisplayCount(int count) { m_temperatureDisplayCount = count; }
     
     // Camera controls
     void setZoom(float zoom);
     void pan(float deltaX, float deltaY);
     void resetCamera();
     
+    // Get current temperatures for display
+    const std::vector<float>& getTemperatures() const { return m_temperatures; }
+    
 private:
     void initializeRodGeometry();
     void updateRodGeometry();
+    void renderTemperatureValues();
     void cleanup();
     
     // OpenGL objects
@@ -49,6 +55,8 @@ private:
     int m_colorScheme;
     float m_minTemp;
     float m_maxTemp;
+    bool m_showTemperatureValues = true;
+    int m_temperatureDisplayCount = 5;
     
     // Matrices
     glm::mat4 m_projection;

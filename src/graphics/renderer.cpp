@@ -2,9 +2,11 @@
 #include "shader.h"
 #include "../utils/logger.h"
 #include <glm/gtc/matrix_transform.hpp>
+#include <imgui.h>
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <iomanip>
 
 Renderer::Renderer() 
     : m_rodVAO(0)
@@ -202,6 +204,81 @@ void Renderer::render() {
     glBindVertexArray(m_rodVAO);
     glDrawElements(GL_TRIANGLES, m_indices.size(), GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
+    
+    // Render temperature values as overlay text
+    if (m_showTemperatureValues && !m_temperatures.empty()) {
+        renderTemperatureValues();
+    }
+}
+
+void Renderer::renderTemperatureValues() {
+    // Create an invisible ImGui window for drawing text
+    ImGui::SetNextWindowPos(ImVec2(0, 0));
+    ImGui::SetNextWindowSize(ImVec2(m_width, m_height));
+    ImGui::Begin("TempOverlay", nullptr, 
+                 ImGuiWindowFlags_NoTitleBar | 
+                 ImGuiWindowFlags_NoResize | 
+                 ImGuiWindowFlags_NoMove | 
+                 ImGuiWindowFlags_NoScrollbar | 
+                 ImGuiWindowFlags_NoCollapse | 
+                 ImGuiWindowFlags_NoBackground | 
+                 ImGuiWindowFlags_NoSavedSettings | 
+                 ImGuiWindowFlags_NoInputs | 
+                 ImGuiWindowFlags_NoFocusOnAppearing | 
+                 ImGuiWindowFlags_NoBringToFrontOnFocus);
+    
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+    
+    // Calculate positions for temperature display
+    int numPoints = std::min(m_temperatureDisplayCount, static_cast<int>(m_temperatures.size()));
+    if (numPoints < 2) numPoints = 2; // At least show start and end
+    
+    for (int i = 0; i < numPoints; ++i) {
+        // Calculate which temperature point to display
+        int tempIndex = (i == numPoints - 1) ? m_temperatures.size() - 1 : 
+                        (i * (m_temperatures.size() - 1)) / (numPoints - 1);
+        
+        if (tempIndex >= m_temperatures.size()) continue;
+        
+        // Convert rod position to screen coordinates
+        float rodX = -1.0f + (2.0f * tempIndex / (m_temperatures.size() - 1));
+        
+        // Apply view and projection transformations
+        glm::vec4 worldPos = glm::vec4(rodX + m_pan.x, 0.15f + m_pan.y, 0.0f, 1.0f);
+        glm::vec4 projPos = m_projection * worldPos;
+        
+        // Convert to screen coordinates
+        float screenX = (projPos.x + 1.0f) * 0.5f * m_width;
+        float screenY = (1.0f - (projPos.y + 1.0f) * 0.5f) * m_height;
+        
+        // Format temperature string
+        std::stringstream ss;
+        ss << std::fixed << std::setprecision(1) << m_temperatures[tempIndex] << "°C";
+        std::string tempStr = ss.str();
+        
+        // Draw background for better readability
+        ImVec2 textSize = ImGui::CalcTextSize(tempStr.c_str());
+        ImVec2 textPos(screenX - textSize.x / 2, screenY - 30);
+        
+        draw_list->AddRectFilled(
+            ImVec2(textPos.x - 2, textPos.y - 2),
+            ImVec2(textPos.x + textSize.x + 2, textPos.y + textSize.y + 2),
+            IM_COL32(0, 0, 0, 180)
+        );
+        
+        // Draw temperature text
+        draw_list->AddText(textPos, IM_COL32(255, 255, 255, 255), tempStr.c_str());
+        
+        // Draw a small line pointing to the rod
+        draw_list->AddLine(
+            ImVec2(screenX, screenY - 20),
+            ImVec2(screenX, screenY - 5),
+            IM_COL32(255, 255, 255, 200),
+            1.0f
+        );
+    }
+    
+    ImGui::End();
 }
 
 void Renderer::resize(int width, int height) {
